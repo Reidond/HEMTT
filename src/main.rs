@@ -6,9 +6,10 @@ use self_update;
 use std::io::{stdin, stdout, Write};
 use std::path::Path;
 
-mod project;
-mod files;
 mod build;
+mod check;
+mod files;
+mod project;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const HEMTT_FILE: &str = "hemtt.json";
@@ -21,6 +22,7 @@ Usage:
   hemtt create
   hemtt addon <name>
   hemtt build [--release]
+  hemtt check [--git]
   hemtt update
   hemtt (-h | --help)
   hemtt --version
@@ -35,6 +37,7 @@ Commands:
 Options:
   -v --verbose        Enable verbose output
   -f --force          Overwrite target files
+     --git            Exit non-zero (for use with git hooks)
   -h --help           Show usage information and exit
      --version        Show version number and exit
 ";
@@ -45,9 +48,11 @@ struct Args {
   cmd_create: bool,
   cmd_addon: bool,
   cmd_build: bool,
+  cmd_check: bool,
   cmd_update: bool,
   flag_verbose: bool,
   flag_force: bool,
+  flag_git: bool,
   flag_version: bool,
   flag_release: bool,
   arg_name: String,
@@ -117,6 +122,13 @@ fn main() {
       build::release(&p).unwrap()
     } else {
       build::build(&p).unwrap();
+    }
+  } else if args.cmd_check {
+    check(false, args.flag_force).unwrap();
+    let p = project::get_project().unwrap();
+    let error = check::debug(&p);
+    if error.unwrap() && args.flag_git {
+      std::process::exit(1);
     }
   } else if args.cmd_update {
     let target = self_update::get_target().unwrap();
